@@ -1,0 +1,101 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Fatemeh-Hosseini-Nasab1
+
+//@version=6
+indicator("V9 Sniper Visualizer (+ Crosses)", overlay=true, max_lines_count=500, max_labels_count=500)
+
+// ==========================================
+// 1. INPUTS
+// ==========================================
+rsi_len = input.int(14, "RSI Length")
+atr_len = input.int(14, "ATR Length")
+
+// EMAs
+ema5_len   = input.int(5, "EMA 5")
+ema20_len  = input.int(20, "EMA 20")
+ema50_len  = input.int(50, "EMA 50")
+ema75_len  = input.int(75, "EMA 75")
+ema100_len = input.int(100, "EMA 100")
+ema150_len = input.int(150, "EMA 150")
+
+// SAR
+sar_start = input.float(0.02, "SAR Start")
+sar_inc   = input.float(0.02, "SAR Increment")
+sar_max   = input.float(0.2, "SAR Max")
+
+// ==========================================
+// 2. INDICATORS CALCULATION
+// ==========================================
+rsi = ta.rsi(close, rsi_len)
+rsi_chg = rsi - rsi[1] // RSI Change
+
+atr = ta.atr(atr_len)
+
+ema5   = ta.ema(close, ema5_len)
+ema20  = ta.ema(close, ema20_len)
+ema50  = ta.ema(close, ema50_len)
+ema75  = ta.ema(close, ema75_len)
+ema100 = ta.ema(close, ema100_len)
+ema150 = ta.ema(close, ema150_len)
+
+sar = ta.sar(sar_start, sar_inc, sar_max)
+
+// ==========================================
+// 3. PLOTTING INDICATORS
+// ==========================================
+plot(ema5,   "EMA 5",   color=color.new(#03edf5, 0), linewidth=3)
+plot(ema20,  "EMA 20",  color=color.new(#20f105, 0), linewidth=3)
+plot(ema50,  "EMA 50",  color=color.new(#ff3c00, 0), linewidth=3)
+plot(ema75,  "EMA 75",  color=color.new(#faf9fa, 0), linewidth=3)
+plot(ema100, "EMA 100", color=color.new(#c308f1, 0), linewidth=3)
+plot(ema150, "EMA 150", color=color.new(#f105d2, 0), linewidth=3)
+plot(sar,    "SAR",     color=color.new(#f3f708, 0), style=plot.style_cross, linewidth=2)
+
+// ==========================================
+// 4. CROSS VISUALIZATIONS (The + Symbols)
+// ==========================================
+// 20/50 Cross
+cross_20_50_up = ta.crossover(ema20, ema50)
+cross_20_50_dn = ta.crossunder(ema20, ema50)
+
+// Using shape.cross (+) for the 20/50 lines
+plotshape(cross_20_50_up, title="20/50 UP", style=shape.cross, location=location.abovebar, color=color.new(#0393f3, 0), size=size.large)
+plotshape(cross_20_50_dn, title="20/50 DN", style=shape.cross, location=location.abovebar, color=color.new(#021bfc, 0), size=size.large)
+
+// 5/150 Cross
+cross_5_150_up = ta.crossover(ema5, ema150)
+cross_5_150_dn = ta.crossunder(ema5, ema150)
+
+// Using shape.cross (+) for the 5/150 lines
+plotshape(cross_5_150_up, title="5/150 UP", style=shape.cross, location=location.belowbar, color=color.new(#bfd400, 0), size=size.large)
+plotshape(cross_5_150_dn, title="5/150 DN", style=shape.cross, location=location.abovebar, color=color.new(#e5ff00, 0), size=size.large)
+
+// ==========================================
+// 5. THE SNIPER LOGIC (Validations)
+// ==========================================
+spike_up = rsi_chg > 10
+spike_dn = rsi_chg < -10
+
+trend_up = ema20 > ema50
+trend_dn = ema20 < ema50
+
+min_ema = math.min(ema5, ema20, ema50, ema75, ema100, ema150)
+max_ema = math.max(ema5, ema20, ema50, ema75, ema100, ema150)
+
+atr_gate_long  = (low - atr) < min_ema
+atr_gate_short = (high + atr) > max_ema
+
+valid_long  = spike_up and trend_up and atr_gate_long
+valid_short = spike_dn and trend_dn and atr_gate_short
+
+// ==========================================
+// 6. DISPLAY SIGNALS & ATR NUMBER
+// ==========================================
+plotshape(valid_long, title="VALID LONG", style=shape.labelup, location=location.belowbar, color=color.new(color.green, 0), size=size.large, text="LONG")
+plotshape(valid_short, title="VALID SHORT", style=shape.labeldown, location=location.abovebar, color=color.new(color.red, 0), size=size.large, text="SHORT")
+
+if valid_long
+    label.new(bar_index, low, text="ATR: " + str.tostring(atr, "#.##"), style=label.style_label_up, color=color.new(color.green, 50), textcolor=color.white, size=size.small)
+
+if valid_short
+    label.new(bar_index, high, text="ATR: " + str.tostring(atr, "#.##"), style=label.style_label_down, color=color.new(color.red, 50), textcolor=color.white, size=size.small)
